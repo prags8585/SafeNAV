@@ -1,0 +1,159 @@
+import json
+
+cells = []
+
+# Title
+cells.append({"cell_type": "markdown", "metadata": {}, "source": ["# Phase 6: Final Model Comparison & Conclusion\n", "In this final phase, we re-instantiate our three models (Decision Tree, Naïve Bayes, and Logistic Regression) on the SMOTE-balanced dataset. We will then compare them head-to-head using an overlaid ROC curve, side-by-side Confusion Matrices, and a final metrics table."]})
+
+# Imports
+imports_code = [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.tree import DecisionTreeClassifier\n",
+    "from sklearn.naive_bayes import GaussianNB\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_curve, auc\n",
+    "from sklearn.preprocessing import label_binarize\n",
+    "from imblearn.over_sampling import SMOTE\n",
+    "\n",
+    "sns.set_theme(style=\"whitegrid\")\n",
+    "plt.rcParams.update({'figure.autolayout': True})\n",
+    "\n",
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')"
+]
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": imports_code})
+
+# Load Data
+data_code = [
+    "print(\"Loading preprocessed dataset...\")\n",
+    "df = pd.read_csv('../outputs/processed_imbalanced_data.csv')\n",
+    "X = df.drop('Severity', axis=1)\n",
+    "y = df['Severity']\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n",
+    "\n",
+    "print(\"Applying SMOTE to training data...\")\n",
+    "smote = SMOTE(random_state=42)\n",
+    "X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train)\n",
+    "print(\"Data ready for final comparison!\")"
+]
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": data_code})
+
+# Train Models
+train_code = [
+    "print(\"Training Decision Tree...\")\n",
+    "dt = DecisionTreeClassifier(max_depth=15, random_state=42)\n",
+    "dt.fit(X_train_balanced, y_train_balanced)\n",
+    "\n",
+    "print(\"Training Naïve Bayes...\")\n",
+    "nb = GaussianNB()\n",
+    "nb.fit(X_train_balanced, y_train_balanced)\n",
+    "\n",
+    "print(\"Training Logistic Regression...\")\n",
+    "lr = LogisticRegression(multi_class='multinomial', max_iter=1000, n_jobs=-1, random_state=42)\n",
+    "lr.fit(X_train_balanced, y_train_balanced)\n",
+    "\n",
+    "print(\"All models trained successfully!\")"
+]
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": train_code})
+
+# Predict
+pred_code = [
+    "# Predictions\n",
+    "y_pred_dt = dt.predict(X_test)\n",
+    "y_prob_dt = dt.predict_proba(X_test)\n",
+    "\n",
+    "y_pred_nb = nb.predict(X_test)\n",
+    "y_prob_nb = nb.predict_proba(X_test)\n",
+    "\n",
+    "y_pred_lr = lr.predict(X_test)\n",
+    "y_prob_lr = lr.predict_proba(X_test)"
+]
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": pred_code})
+
+# Metrics Table
+table_code = [
+    "models = ['Decision Tree', 'Naïve Bayes', 'Logistic Regression']\n",
+    "preds = [y_pred_dt, y_pred_nb, y_pred_lr]\n",
+    "\n",
+    "results = []\n",
+    "for name, pred in zip(models, preds):\n",
+    "    results.append({\n",
+    "        'Model': name,\n",
+    "        'Accuracy': accuracy_score(y_test, pred),\n",
+    "        'Precision': precision_score(y_test, pred, average='weighted', zero_division=0),\n",
+    "        'Recall': recall_score(y_test, pred, average='weighted', zero_division=0),\n",
+    "        'F1-Score': f1_score(y_test, pred, average='weighted', zero_division=0)\n",
+    "    })\n",
+    "\n",
+    "results_df = pd.DataFrame(results)\n",
+    "results_df = results_df.set_index('Model')\n",
+    "display(results_df.round(4))"
+]
+cells.append({"cell_type": "markdown", "metadata": {}, "source": ["### 1. Final Metrics Summary Table"]})
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": table_code})
+
+# Overlaid ROC
+roc_code = [
+    "y_test_bin = label_binarize(y_test, classes=[1, 2, 3, 4])\n",
+    "fatal_idx = 3 # Severity 4\n",
+    "\n",
+    "fpr_dt, tpr_dt, _ = roc_curve(y_test_bin[:, fatal_idx], y_prob_dt[:, fatal_idx])\n",
+    "fpr_nb, tpr_nb, _ = roc_curve(y_test_bin[:, fatal_idx], y_prob_nb[:, fatal_idx])\n",
+    "fpr_lr, tpr_lr, _ = roc_curve(y_test_bin[:, fatal_idx], y_prob_lr[:, fatal_idx])\n",
+    "\n",
+    "plt.figure(figsize=(10, 8))\n",
+    "plt.plot(fpr_dt, tpr_dt, label=f'Decision Tree (AUC = {auc(fpr_dt, tpr_dt):.3f})', lw=2)\n",
+    "plt.plot(fpr_nb, tpr_nb, label=f'Naïve Bayes (AUC = {auc(fpr_nb, tpr_nb):.3f})', lw=2)\n",
+    "plt.plot(fpr_lr, tpr_lr, label=f'Logistic Regression (AUC = {auc(fpr_lr, tpr_lr):.3f})', lw=2)\n",
+    "\n",
+    "plt.plot([0, 1], [0, 1], 'k--', lw=2)\n",
+    "plt.xlim([0.0, 1.0])\n",
+    "plt.ylim([0.0, 1.05])\n",
+    "plt.xlabel('False Positive Rate', fontsize=12)\n",
+    "plt.ylabel('True Positive Rate (Recall)', fontsize=12)\n",
+    "plt.title('Overlaid ROC Curves (Predicting Fatal Accidents)', fontsize=16)\n",
+    "plt.legend(loc=\"lower right\", fontsize=12)\n",
+    "plt.show()"
+]
+cells.append({"cell_type": "markdown", "metadata": {}, "source": ["### 2. Overlaid ROC Curves"]})
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": roc_code})
+
+# Side-by-Side Confusion Matrices
+cm_code = [
+    "fig, axes = plt.subplots(1, 3, figsize=(20, 6))\n",
+    "titles = ['Decision Tree', 'Naïve Bayes', 'Logistic Regression']\n",
+    "\n",
+    "for ax, pred, title in zip(axes, preds, titles):\n",
+    "    cm = confusion_matrix(y_test, pred)\n",
+    "    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax, xticklabels=[1,2,3,4], yticklabels=[1,2,3,4], cbar=False)\n",
+    "    ax.set_title(title, fontsize=14, pad=15)\n",
+    "    ax.set_xlabel('Predicted Severity')\n",
+    "    ax.set_ylabel('Actual Severity')\n",
+    "\n",
+    "plt.suptitle('Side-by-Side Confusion Matrices (SMOTE Balanced)', fontsize=18, y=1.05)\n",
+    "plt.show()"
+]
+cells.append({"cell_type": "markdown", "metadata": {}, "source": ["### 3. Side-by-Side Confusion Matrices"]})
+cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": cm_code})
+
+notebook = {
+    "cells": cells,
+    "metadata": {
+        "kernelspec": {
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3"
+        }
+    },
+    "nbformat": 4,
+    "nbformat_minor": 4
+}
+
+with open('06_model_comparison.ipynb', 'w') as f:
+    json.dump(notebook, f, indent=1)
+
