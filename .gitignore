@@ -5,8 +5,10 @@ __pycache__/
 *.pyc
 
 # Data & Outputs
-outputs/
-data/
+outputs/*
+data/*
+!outputs/.gitkeep
+!data/.gitkeep
 *.csv
 *.zip
 
